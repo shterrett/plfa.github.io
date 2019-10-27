@@ -81,7 +81,8 @@ successor of two; and so on.
 Write out `7` in longhand.
 
 ```
--- Your code goes here
+seven : ℕ
+seven = suc (suc (suc (suc (suc (suc (suc zero))))))
 ```
 
 
@@ -431,7 +432,21 @@ other word for evidence, which we will use interchangeably, is _proof_.
 Compute `3 + 4`, writing out your reasoning as a chain of equations.
 
 ```
--- Your code goes here
+_ : 3 + 4 ≡ 7
+_ =
+  begin
+    3 + 4
+  ≡⟨⟩
+    suc (2 + 4)
+  ≡⟨⟩
+    suc (suc (1 + 4))
+  ≡⟨⟩
+    suc (suc (suc (0 + 4)))
+  ≡⟨⟩
+    suc (suc (suc 4))
+  ≡⟨⟩
+    7
+  ∎
 ```
 
 
@@ -492,7 +507,21 @@ it can easily be inferred from the corresponding term.
 Compute `3 * 4`, writing out your reasoning as a chain of equations.
 
 ```
--- Your code goes here
+_ : 3 * 4 ≡ 12
+_ =
+  begin
+    3 * 4
+  ≡⟨⟩
+    4 + (2 * 4)
+  ≡⟨⟩
+    4 + 4 + (1 * 4)
+  ≡⟨⟩
+    4 + 4 + 4 + (0 * 4)
+  ≡⟨⟩
+    4 + 4 + 4 + 0
+  ≡⟨⟩
+    12
+  ∎
 ```
 
 
@@ -506,9 +535,11 @@ Define exponentiation, which is given by the following equations:
 Check that `3 ^ 4` is `81`.
 
 ```
--- Your code goes here
+_^_ : ℕ -> ℕ -> ℕ
+m ^ 0 = 1
+0 ^ m = 0
+suc m ^ n = m * (m ^ n)
 ```
-
 
 
 ## Monus
@@ -571,7 +602,33 @@ _ =
 Compute `5 ∸ 3` and `3 ∸ 5`, writing out your reasoning as a chain of equations.
 
 ```
--- Your code goes here
+_ : 5 ∸ 3 ≡ 2
+_ =
+  begin
+    suc 4 ∸ suc 2
+  ≡⟨⟩
+    suc 3 ∸ suc 1
+  ≡⟨⟩
+    suc 2 ∸ suc 0
+  ≡⟨⟩
+    2 ∸ 0
+  ≡⟨⟩
+    2
+  ∎
+  
+_ : 3 ∸ 5 ≡ 0
+_ =
+  begin
+    suc 2 ∸ suc 4
+  ≡⟨⟩
+    suc 1 ∸ suc 3
+  ≡⟨⟩
+    suc 0 ∸ suc 2
+  ≡⟨⟩
+    0 ∸ 2
+  ≡⟨⟩
+    0
+  ∎
 ```
 
 
@@ -761,7 +818,7 @@ Begin by typing:
 
     _+_ : ℕ → ℕ → ℕ
     m + n = ?
-
+    
 The question mark indicates that you would like Agda to help with
 filling in that part of the code. If you type `C-c C-l` (pressing
 the control key while hitting the `c` key followed by the `l` key)
@@ -917,7 +974,170 @@ represents a positive natural, and represent zero by `⟨⟩ O`.
 Confirm that these both give the correct answer for zero through four.
 
 ```
--- Your code goes here
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I
+inc (⟨⟩ O) = ⟨⟩ I
+inc (⟨⟩ I) = ⟨⟩ I O
+inc (bin O) = bin I
+inc (bin I) = bin O O
+
+to : ℕ → Bin
+to 0 = ⟨⟩ O
+to (suc m) = inc (to m)
+
+from : Bin → ℕ
+from ⟨⟩ = 0
+from (⟨⟩ O) = 0
+from (bin O) = 2 * from bin
+from (bin I) = 1 + (2 * from bin)
+
+fromZero : from (⟨⟩ O) ≡ 0
+fromZero =
+  begin
+    from (⟨⟩ O)
+  ≡⟨⟩
+    2 * from ⟨⟩
+  ≡⟨⟩
+    2 * 0
+  ≡⟨⟩
+    0
+  ∎
+  
+toZero : to 0 ≡ ⟨⟩ O
+toZero =
+  begin
+    to 0
+  ≡⟨⟩
+    ⟨⟩ O
+  ∎
+  
+fromOne : from (⟨⟩ I) ≡ 1
+fromOne =
+  begin
+    from (⟨⟩ I)
+  ≡⟨⟩
+    1 + (2 * from ⟨⟩)
+  ≡⟨⟩
+    1 + 2 * 0
+  ≡⟨⟩
+    1
+  ∎
+  
+toOne : to 1 ≡ ⟨⟩ I
+toOne =
+  begin
+    to 1
+  ≡⟨⟩
+    inc (to 0)
+  ≡⟨⟩
+    inc (⟨⟩ O)
+  ≡⟨⟩
+    ⟨⟩ I
+  ∎
+  
+fromTwo : from (⟨⟩ I O) ≡ 2
+fromTwo =
+  begin
+    from (⟨⟩ I O)
+  ≡⟨⟩
+    0 + (2 * from (⟨⟩ I))
+  ≡⟨⟩
+    0 + (2 * (1 + (2 * from ⟨⟩)))
+  ≡⟨⟩
+    0 + (2 * (1 + (2 * 0)))
+  ≡⟨⟩
+    2
+  ∎
+  
+toTwo : to 2 ≡ ⟨⟩ I O
+toTwo =
+  begin
+    to 2
+  ≡⟨⟩
+    inc (to 1)
+  ≡⟨⟩
+    inc (inc (to 0))
+  ≡⟨⟩
+    inc (inc (⟨⟩ O))
+  ≡⟨⟩
+    inc (⟨⟩ I)
+  ≡⟨⟩
+    ⟨⟩ I O
+  ∎
+  
+fromThree : from (⟨⟩ I I) ≡ 3
+fromThree =
+  begin
+    from (⟨⟩ I I)
+  ≡⟨⟩
+    1 + 2 * (from (⟨⟩ I))
+  ≡⟨⟩
+    1 + 2 * (1 + 2 * (from ⟨⟩))
+  ≡⟨⟩
+    1 + 2 * (1 + 2 * 0)
+  ≡⟨⟩
+    3
+  ∎
+  
+toThree : to 3 ≡ ⟨⟩ I I
+toThree =
+  begin
+    to 3
+  ≡⟨⟩
+    inc (to 2)
+  ≡⟨⟩
+    inc (inc (to 1))
+  ≡⟨⟩
+    inc (inc (inc (to 0)))
+  ≡⟨⟩
+    inc (inc (inc (⟨⟩ O)))
+  ≡⟨⟩
+    inc (inc (⟨⟩ I))
+  ≡⟨⟩
+    inc (⟨⟩ I O)
+  ≡⟨⟩
+    ⟨⟩ I I
+  ∎
+  
+fromFour : from (⟨⟩ I O O) ≡ 4
+fromFour =
+  begin
+    from (⟨⟩ I O O)
+  ≡⟨⟩
+    0 + 2 * (from (⟨⟩ I O))
+  ≡⟨⟩
+    0 + 2 * (0 + 2 * (from (⟨⟩ I)))
+  ≡⟨⟩
+    0 + 2 * (0 + 2 * (1 + from ⟨⟩))
+  ≡⟨⟩
+    0 + 2 * (0 + 2 * (1 + 0))
+  ≡⟨⟩
+    4
+  ∎
+   
+toFour : to 4 ≡ ⟨⟩ I O O
+toFour =
+  begin
+    to 4
+  ≡⟨⟩
+    inc (to 3)
+  ≡⟨⟩
+    inc (inc (to 2))
+  ≡⟨⟩
+    inc (inc (inc (to 1)))
+  ≡⟨⟩
+    inc (inc (inc (inc (to 0))))
+  ≡⟨⟩
+    inc (inc (inc (inc (⟨⟩ O))))
+  ≡⟨⟩
+    inc (inc (inc (⟨⟩ I)))
+  ≡⟨⟩
+    inc (inc (⟨⟩ I O))
+  ≡⟨⟩
+    inc (⟨⟩ I I)
+  ≡⟨⟩
+    ⟨⟩ I O O
+  ∎
 ```
 
 
