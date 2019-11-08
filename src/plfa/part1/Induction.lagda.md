@@ -80,7 +80,7 @@ Give an example of an operator that has an identity and is
 associative but is not commutative.
 
 ```
--- Your code goes here
+-- matrix multiplication
 ```
 
 
@@ -714,8 +714,8 @@ associativity of addition in Agda, using `rewrite` rather than chains of
 equations:
 ```
 +-assoc′ : ∀ (m n p : ℕ) → (m + n) + p ≡ m + (n + p)
-+-assoc′ zero    n p                          =  refl
-+-assoc′ (suc m) n p  rewrite +-assoc′ m n p  =  refl
++-assoc′ zero n p = refl
++-assoc′ (suc m) n p rewrite +-assoc′ m n p = refl
 ```
 
 For the base case, we must show:
@@ -870,7 +870,17 @@ just apply the previous results which show addition
 is associative and commutative.
 
 ```
--- Your code goes here
++-swap : ∀ (m n p : ℕ) → m + (n + p) ≡ n + (m + p)
++-swap m n p =
+  begin
+    m + (n + p)
+  ≡⟨ (sym (+-assoc m n p)) ⟩
+    (m + n) + p
+  ≡⟨ cong (_+ p) (+-comm m n) ⟩
+    (n + m) + p
+  ≡⟨ +-assoc n m p ⟩
+    n + (m + p)
+  ∎
 ```
 
 
@@ -883,7 +893,59 @@ Show multiplication distributes over addition, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```
--- Your code goes here
+*-zero-r : ∀ (m : ℕ) → m * zero ≡ zero
+*-zero-r zero =
+  begin
+    zero * zero
+  ≡⟨⟩
+    zero
+  ∎
+*-zero-r (suc m) =
+  begin
+    suc m * zero
+  ≡⟨⟩
+    zero + (m * zero)
+  ≡⟨⟩
+    m * zero
+  ≡⟨ *-zero-r m ⟩
+    zero
+  ∎
+
+*-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ m * p + n * p
+*-distrib-+ m zero p =
+  begin
+    (m + zero) * p
+  ≡⟨ cong (_* p) (+-identityʳ m) ⟩
+    m * p
+  ≡⟨ sym (+-identityʳ (m * p)) ⟩
+    (m * p) + zero
+  ≡⟨ cong ((m * p) +_) (*-zero-r zero) ⟩
+    (m * p) + (zero * zero)
+  ∎
+*-distrib-+ m (suc n) p =
+  begin
+    (m + suc n) * p
+  ≡⟨ cong (_* p) (+-comm m (suc n)) ⟩
+    (suc n + m) * p
+  ≡⟨⟩
+    (suc (n + m)) * p
+  ≡⟨ cong (_* p) (cong suc (+-comm n m)) ⟩
+    (suc (m + n)) * p
+  ≡⟨⟩
+    (suc (m + n)) * p
+  ≡⟨⟩
+    p + ((m + n) * p)
+  ≡⟨ cong (p +_) (*-distrib-+ m n p) ⟩
+    p + (m * p + n * p)
+  ≡⟨ sym (+-assoc p (m * p) (n * p)) ⟩
+    p + m * p + n * p
+  ≡⟨ cong (_+ n * p) (+-comm p (m * p)) ⟩
+    m * p + p + n * p
+  ≡⟨ +-assoc (m * p) p (n * p) ⟩
+    m * p + (p + n * p)
+  ≡⟨⟩
+    m * p + (suc n * p)
+  ∎
 ```
 
 
@@ -892,11 +954,29 @@ for all naturals `m`, `n`, and `p`.
 Show multiplication is associative, that is,
 
     (m * n) * p ≡ m * (n * p)
-
+ 
 for all naturals `m`, `n`, and `p`.
 
 ```
--- Your code goes here
+*-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
+*-assoc zero n p =
+  begin
+    (zero * n) * p
+  ≡⟨⟩
+    zero * p
+  ≡⟨⟩
+    zero * (n * p)
+  ∎
+*-assoc (suc m) n p =
+  begin
+    (suc m * n) * p
+  ≡⟨⟩
+    (n + (m * n)) * p
+  ≡⟨ *-distrib-+ n (m * n) p ⟩
+    n * p + (m * n) * p
+  ≡⟨ cong (n * p +_) (*-assoc m n p) ⟩
+    n * p + m * (n * p)
+  ∎
 ```
 
 
@@ -910,7 +990,45 @@ for all naturals `m` and `n`.  As with commutativity of addition,
 you will need to formulate and prove suitable lemmas.
 
 ```
--- Your code goes here
+*-backwards : ∀ (m n : ℕ) → n + n * m ≡ n * suc m
+*-backwards m 0 = refl
+*-backwards m (suc n) =
+  begin
+    (suc n) + (suc n * m)
+  ≡⟨⟩
+    suc n + (m + n * m)
+  ≡⟨ sym (+-assoc (suc n) m (n * m)) ⟩
+    (suc n + m) + n * m
+  ≡⟨⟩
+    suc (n + m) + (n * m)
+  ≡⟨ cong (_+ (n * m)) (cong suc (+-comm n m)) ⟩
+    suc (m + n) + (n * m)
+  ≡⟨⟩
+    suc m + n + (n * m)
+  ≡⟨ +-assoc (suc m) n (n * m) ⟩
+    suc m + (n + (n * m))
+  ≡⟨ cong (suc m +_) (*-backwards m n) ⟩
+    suc m + (n * suc m)
+  ∎
+*-comm : ∀ (m n : ℕ) → m * n ≡ n * m
+*-comm zero n =
+  begin
+    zero * n
+  ≡⟨⟩
+    zero
+  ≡⟨ sym (*-zero-r n) ⟩
+    n * zero
+  ∎
+*-comm (suc m) n =
+  begin
+    (suc m) * n
+  ≡⟨⟩
+    n + m * n
+  ≡⟨ cong (n +_) (*-comm m n) ⟩
+    n + n * m
+  ≡⟨ *-backwards m n ⟩
+    n * (suc m)
+  ∎
 ```
 
 
@@ -923,7 +1041,9 @@ Show
 for all naturals `n`. Did your proof require induction?
 
 ```
--- Your code goes here
+0∸n≡0 : ∀ (n : ℕ) → zero ∸ n ≡ zero
+0∸n≡0 0 = refl
+0∸n≡0 (suc n) = refl
 ```
 
 
@@ -936,7 +1056,32 @@ Show that monus associates with addition, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```
--- Your code goes here
+∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+∸-+-assoc m n zero =
+  begin
+    m ∸ n ∸ zero
+  ≡⟨⟩
+    m ∸ n
+  ≡⟨ cong (m ∸_) (sym (+-identityʳ n)) ⟩
+    m ∸ (n + zero)
+  ∎
+∸-+-assoc m zero p =
+  begin
+    m ∸ zero ∸ p
+  ≡⟨⟩
+    m ∸ p
+  ≡⟨⟩
+    m ∸ (zero + p)
+  ∎
+∸-+-assoc zero (suc n) (suc p) = refl
+∸-+-assoc (suc m) (suc n) p =
+  begin
+    (suc m) ∸ (suc n) ∸ p
+  ≡⟨⟩
+    m ∸ n ∸ p
+  ≡⟨ ∸-+-assoc m n p ⟩
+    m ∸ (n + p)
+  ∎
 ```
 
 
@@ -950,6 +1095,105 @@ Show the following three laws
 
 for all `m`, `n`, and `p`.
 
+```
+open import Data.Nat using (_^_)
+exp-plus-mult : ∀ (m n p : ℕ) → m ^ (n + p) ≡ (m ^ n) * (m ^ p)
+exp-plus-mult zero zero zero = refl
+exp-plus-mult zero (suc n) (suc p) = refl
+exp-plus-mult (suc m) zero zero = refl
+exp-plus-mult m (suc n) p =
+  begin
+    m ^ (suc n + p)
+  ≡⟨⟩
+    m * (m ^ (n + p))
+  ≡⟨ cong (m *_) (exp-plus-mult m n p) ⟩
+    m * ((m ^ n) * (m ^ p))
+  ≡⟨ sym (*-assoc m (m ^ n) (m ^ p)) ⟩
+    (m * (m ^ n)) * (m ^ p)
+  ≡⟨⟩
+    (m ^ (suc n)) * (m ^ p)
+  ∎
+exp-plus-mult m n (suc p) =
+  begin
+    m ^ (n + suc p)
+  ≡⟨ cong (m ^_) (+-comm n (suc p)) ⟩
+    m ^ (suc p + n)
+  ≡⟨⟩
+    m * (m ^ (p + n))
+  ≡⟨ cong (m *_) (exp-plus-mult m p n) ⟩
+    m * (m ^ p * m ^ n)
+  ≡⟨ sym (*-assoc m (m ^ p) (m ^ n)) ⟩
+    (m * (m ^ p)) * (m ^ n)
+  ≡⟨⟩
+    (m ^ (suc p)) * (m ^ n)
+  ≡⟨ *-comm (m ^ (suc p)) (m ^ n) ⟩
+    m ^ n * m ^ (suc p)
+  ∎
+  
+mult-exp-mult : ∀ (m n p : ℕ) → (m * n) ^ p ≡ (m ^ p) * (n ^ p)
+mult-exp-mult zero zero zero = refl
+mult-exp-mult zero zero (suc p) = refl
+mult-exp-mult zero (suc n) zero = refl
+mult-exp-mult (suc m) zero zero = refl
+mult-exp-mult (suc m) (suc n) zero = refl
+mult-exp-mult m n (suc p) =
+  begin
+    (m * n) ^ (suc p)
+  ≡⟨⟩
+    (m * n) * (m * n) ^ p
+  ≡⟨ cong ((m * n) *_) (mult-exp-mult m n p) ⟩
+    (m * n) * ((m ^ p) * (n ^ p))
+  ≡⟨ cong (_* ((m ^ p) * (n ^ p))) (*-comm m n) ⟩
+    (n * m) * ((m ^ p) * (n ^ p))
+  ≡⟨ sym (*-assoc (n * m) (m ^ p) (n ^ p)) ⟩
+    (n * m) * (m ^ p) * (n ^ p)
+  ≡⟨ cong (_* (n ^ p)) (*-assoc n m (m ^ p)) ⟩
+    n * (m * (m ^ p)) * (n ^ p)
+  ≡⟨⟩
+    n * (m ^ (suc p)) * (n ^ p)
+  ≡⟨ cong (_* (n ^ p)) (*-comm n (m ^ suc p)) ⟩
+    (m ^ (suc p)) * n * (n ^ p)
+  ≡⟨ *-assoc (m ^ suc p) n (n ^ p) ⟩
+    (m ^ suc p) * (n * (n ^ p))
+  ≡⟨⟩
+    (m ^ (suc p)) * (n ^ (suc p))
+  ∎
+  
+exp-mult-exp : ∀ (m n p : ℕ) → m ^ (n * p) ≡ (m ^ n) ^ p
+exp-mult-exp zero zero zero = refl
+exp-mult-exp (suc m) zero zero = refl
+exp-mult-exp m n (suc p) =
+  begin
+    m ^ (n * suc p)
+  ≡⟨ cong (m ^_) (*-comm n (suc p)) ⟩
+    m ^ (suc p * n)
+  ≡⟨⟩
+    m ^ (n + p * n)
+  ≡⟨ exp-plus-mult m n (p * n) ⟩
+    m ^ n * m ^ (p * n)
+  ≡⟨ cong ((m ^ n) *_) (cong (m ^_) (*-comm p n))  ⟩
+    m ^ n * m ^ (n * p)
+  ≡⟨ cong ((m ^ n) *_) (exp-mult-exp m n p) ⟩
+    m ^ n * (m ^ n) ^ p
+  ≡⟨⟩
+    (m ^ n) ^ (suc p)
+  ∎
+exp-mult-exp m (suc n) p =
+  begin
+    m ^ (suc n * p)
+  ≡⟨⟩
+    m ^ (p + n * p)
+  ≡⟨ exp-plus-mult m p (n * p) ⟩
+    (m ^ p) * m ^ (n * p)
+  ≡⟨ cong ((m ^ p) *_) (exp-mult-exp m n p) ⟩
+    (m ^ p) * (m ^ n) ^ p
+  ≡⟨ sym (mult-exp-mult m (m ^ n) p) ⟩
+    (m * m ^ n) ^ p
+  ≡⟨⟩
+    (m ^ (suc n)) ^ p
+  ∎
+    
+```
 
 #### Exercise `Bin-laws` (stretch) {#Bin-laws}
 
