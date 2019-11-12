@@ -803,7 +803,12 @@ successor of the sum of two even numbers, which is even.
 Show that the sum of two odd numbers is even.
 
 ```
--- Your code goes here
+e+o≡o : ∀ {m n : ℕ} → even m → odd n → odd (m + n)
+o+o≡e : ∀ {m n : ℕ} → odd m → odd n → even (m + n)
+
+e+o≡o zero n = n
+e+o≡o (suc m) n = suc (o+o≡e m n)
+o+o≡e (suc m) n = suc (e+o≡o m n)
 ```
 
 #### Exercise `Bin-predicates` (stretch) {#Bin-predicates}
