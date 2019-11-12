@@ -234,13 +234,22 @@ partial order but not a total order.
 Give an example of a preorder that is not a partial order.
 
 ```
--- Your code goes here
+-- "Existence of a path" in a directed graph forms a pre-order
+-- Reflexive: A path exsits from n to n
+-- Transitive: If a path exists from a -> b and from b -> c, then a path exists from
+-- a -> c which is simply the concatenation of a -> b and b -> c
+-- NOT anti-symmetric: If the graph has cycles, a path from a -> b and a different path b -> a may exist, with a not equal to b.
 ```
 
 Give an example of a partial order that is not a total order.
 
 ```
--- Your code goes here
+-- "Existence of a path" in a directed, acyclic graph
+-- Reflexive: A path exsits from n to n
+-- Transitive: If a path exists from a -> b and from b -> c, then a path exists from
+-- a -> c which is simply the concatenation of a -> b and b -> c
+-- Anti-symmetric: the graph has no cycles, so a path from a -> b and a path from b -> a cannot exist unless a and b are the same node
+-- NOT Total: a path may not exist between two nodes
 ```
 
 ## Reflexivity
@@ -276,8 +285,8 @@ hold, then `m ≤ p` holds.  Again, `m`, `n`, and `p` are implicit:
   → n ≤ p
     -----
   → m ≤ p
-≤-trans z≤n       _          =  z≤n
-≤-trans (s≤s m≤n) (s≤s n≤p)  =  s≤s (≤-trans m≤n n≤p)
+≤-trans z≤n n≤p = z≤n
+≤-trans (s≤s m≤n) (s≤s n≤p) = s≤s (≤-trans m≤n n≤p)
 ```
 Here the proof is by induction on the _evidence_ that `m ≤ n`.  In the
 base case, the first inequality holds by `z≤n` and must show `zero ≤
@@ -353,7 +362,7 @@ The above proof omits cases where one argument is `z≤n` and one
 argument is `s≤s`.  Why is it ok to omit them?
 
 ```
--- Your code goes here
+-- We can omit them because those cases are impossible. If the first argument is (z≤n) and the second is (s≤s n≤m), then reduction to the base case of m ≡ zero implies that n < 0. This contradicts n ∈ ℕ. A similar argument holds for the opposite case.
 ```
 
 
@@ -543,7 +552,14 @@ transitivity proves `m + p ≤ n + q`, as was to be shown.
 Show that multiplication is monotonic with regard to inequality.
 
 ```
--- Your code goes here
+open import Data.Nat using (_*_)
+open Eq using (_≡_; refl; cong; sym)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+*-mono-r-≤ : ∀ (n p q : ℕ) → p ≤ q → n * p ≤ n * q
+*-mono-r-≤ zero p q p≤q = z≤n
+*-mono-r-≤ (suc n) p q p≤q = +-mono-≤ p q (n * p) (n * q) p≤q (*-mono-r-≤ n p q p≤q)
+-- suc n * p ≤ suc n * q
+-- p + n * p ≤ q + n * q
 ```
 
 
@@ -590,7 +606,9 @@ exploiting the corresponding properties of inequality.
 Show that strict inequality is transitive.
 
 ```
--- Your code goes here
+<-trans : ∀ {m n p : ℕ} → m < n → n < p → m < p
+<-trans z<s (s<s n<p) = z<s
+<-trans (s<s m<n) (s<s n<p) = s<s (<-trans m<n n<p)
 ```
 
 #### Exercise `trichotomy` (practice) {#trichotomy}
@@ -608,7 +626,24 @@ similar to that used for totality.
 [negation]({{ site.baseurl }}/Negation/).)
 
 ```
--- Your code goes here
+infix 4 _>_
+data _>_ : ℕ → ℕ → Set where
+  s>z : ∀ {n : ℕ} → suc n > zero
+  s>s : ∀ {m n : ℕ} → m > n → suc m > suc n
+  
+data Trichotomy : ℕ → ℕ → Set where
+  lt : ∀ {m n : ℕ} → m < n → Trichotomy m n
+  eq : ∀ {m n : ℕ} → m ≡ n → Trichotomy m n
+  gt : ∀ {m n : ℕ} → m > n → Trichotomy m n
+  
+<-trichotomy : ∀ (m n : ℕ) → Trichotomy m n
+<-trichotomy zero zero = eq refl
+<-trichotomy zero (suc n) = lt z<s
+<-trichotomy (suc m) zero = gt s>z
+<-trichotomy (suc m) (suc n) with <-trichotomy m n
+...                             | lt m<n = lt (s<s m<n)
+...                             | eq m≡n = eq (cong suc m≡n)
+...                             | gt m>n = gt (s>s m>n)
 ```
 
 #### Exercise `+-mono-<` (practice) {#plus-mono-less}
@@ -617,7 +652,19 @@ Show that addition is monotonic with respect to strict inequality.
 As with inequality, some additional definitions may be required.
 
 ```
--- Your code goes here
++-mono-r-< : ∀ (n p q : ℕ) → p < q → n + p < n + q
++-mono-r-< zero p q p<q = p<q
++-mono-r-< (suc n) p q p<q = s<s (+-mono-r-< n p q p<q)
+
++-mono-l-< : ∀ (m n p : ℕ) → m < n → m + p < n + p
++-mono-l-< m n zero m<n rewrite +-comm m zero | +-comm n zero = m<n
++-mono-l-< m n p m<n rewrite +-comm m p | +-comm n p = +-mono-r-< p m n m<n
+
++-mono-< : ∀ (m n p q : ℕ) → m < n → p < q → m + p < n + q
++-mono-< m n p q m<n p<q = <-trans (+-mono-l-< m n p m<n) (+-mono-r-< n p q p<q)
+-- m + p < n + q
+-- m + p < n + p < n + q
+-- trans (m + p < n + p) (n + p < n + q)
 ```
 
 #### Exercise `≤-iff-<` (recommended) {#leq-iff-less}
@@ -625,7 +672,14 @@ As with inequality, some additional definitions may be required.
 Show that `suc m ≤ n` implies `m < n`, and conversely.
 
 ```
--- Your code goes here
+≤-iff-< : ∀ (m n : ℕ) → m < n → (suc m) ≤ n
+≤-iff-< zero (suc n) m<n = s≤s z≤n
+≤-iff-< (suc m) (suc n) (s<s m<n) = s≤s (≤-iff-< m n m<n)
+
+<-iff-≤ : ∀ (m n : ℕ) → (suc m) ≤ n → m < n
+<-iff-≤ zero (suc n) sm≤n = z<s
+<-iff-≤ (suc zero) (suc n) (s≤s sm≤n) = s<s (<-iff-≤ zero n sm≤n)
+<-iff-≤ (suc (suc m)) (suc n) (s≤s sm≤n) = s<s (<-iff-≤ (suc m) n sm≤n)
 ```
 
 #### Exercise `<-trans-revisited` (practice) {#less-trans-revisited}
@@ -635,7 +689,14 @@ using the relation between strict inequality and inequality and
 the fact that inequality is transitive.
 
 ```
--- Your code goes here
+<-expand : ∀ (m n : ℕ) → (suc m) < n → m < n
+<-expand zero (suc n) sm<n = z<s
+<-expand (suc m) (suc n) (s<s sm<n) = s<s (<-expand m n sm<n)
+
+<-trans' : ∀ (m n p : ℕ) → m < n → n < p → m < p
+<-trans' m (suc n) p m<n n<p = <-iff-≤ m p (≤-trans
+                                     (≤-iff-< m (suc n) m<n) -- suc m ≤ n
+                                     (≤-iff-< n p (<-expand n p n<p))) -- suc n ≤ p
 ```
 
 
