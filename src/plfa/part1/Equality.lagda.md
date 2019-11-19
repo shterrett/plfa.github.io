@@ -29,6 +29,7 @@ We declare equality as follows:
 ```
 data _≡_ {A : Set} (x : A) : A → Set where
   refl : x ≡ x
+
 ```
 In other words, for any type `A` and for any `x` of type `A`, the
 constructor `refl` provides evidence that `x ≡ x`. Hence, every value
@@ -354,9 +355,102 @@ it to write out an alternative proof that addition is monotonic with
 regard to inequality.  Rewrite all of `+-monoˡ-≤`, `+-monoʳ-≤`, and `+-mono-≤`.
 
 ```
--- Your code goes here
-```
+-- Copy the definitions so they use the ℕ defined in this module
+-- Importing them from Relations tries to use builtin ℕ, and doesn't typecheck
+data _≤_ : ℕ → ℕ → Set where
 
+  z≤n : ∀ {n : ℕ}
+      --------
+    → zero ≤ n
+
+  s≤s : ∀ {m n : ℕ}
+    → m ≤ n
+      -------------
+    → suc m ≤ suc n
+
+≤-trans : ∀ {m n p : ℕ}
+  → m ≤ n
+  → n ≤ p
+    -----
+  → m ≤ p
+≤-trans z≤n n≤p = z≤n
+≤-trans (s≤s m≤n) (s≤s n≤p) = s≤s (≤-trans m≤n n≤p)
+
+≤-refl : ∀ {n : ℕ}
+    -----
+  → n ≤ n
+≤-refl {zero} = z≤n
+≤-refl {suc n} = s≤s ≤-refl
+
+{-# BUILTIN EQUALITY _≡_ #-}
+≡-is-≤ : ∀ (m n : ℕ) → m ≡ n → m ≤ n
+≡-is-≤ zero zero m≡n = z≤n
+≡-is-≤ (suc m) (suc n) m≡n rewrite m≡n = ≤-refl
+  
+
+module ≤-Reasoning where
+  infix 1 begin'_
+  infixr 2 _≤⟨⟩_ _≤⟨_⟩_
+  infix 3 _∎'
+  
+  begin'_ : ∀ {x y : ℕ} → x ≤ y → x ≤ y
+  begin' x≤y = x≤y
+
+  _≤⟨⟩_ : ∀ (x : ℕ) {y : ℕ} → x ≤ y → x ≤ y
+  x ≤⟨⟩ x≤y = x≤y
+
+  _≤⟨_⟩_ : ∀ (x : ℕ) {y z : ℕ} → x ≤ y → y ≤ z → x ≤ z
+  x ≤⟨ x≤y ⟩ y≤z = ≤-trans x≤y y≤z
+  
+  _∎' : ∀ (x : ℕ) → x ≤ x
+  x ∎' = ≤-refl
+  
+open ≤-Reasoning
+
++-mono-r-≤ : ∀ (n p q : ℕ) → p ≤ q → (n + p) ≤ (n + q)
++-mono-r-≤ zero p q p≤q = p≤q
++-mono-r-≤ (suc n) p q p≤q =
+  begin'
+    (suc n) + p
+  ≤⟨⟩
+    suc (n + p)
+  ≤⟨ s≤s (+-mono-r-≤ n p q p≤q) ⟩
+    suc (n + q)
+  ≤⟨⟩
+    (suc n) + q
+  ∎'
+  
++-mono-l-≤ : ∀ (m n p : ℕ) → m ≤ n → (m + p) ≤ (n + p)
++-mono-l-≤ m n zero m≤n rewrite (+-comm m zero) | (+-comm n zero) = m≤n
++-mono-l-≤ m n (suc p) m≤n =
+  begin'
+    m + suc p
+  ≤⟨ ≡-is-≤ (m + suc p) (suc p + m) (+-comm m (suc p)) ⟩
+    suc p + m
+  ≤⟨⟩
+    suc (p + m)
+  ≤⟨ ≡-is-≤ (suc (p + m)) (suc (m + p)) (cong suc (+-comm p m)) ⟩
+    suc (m + p)
+  ≤⟨ s≤s (+-mono-l-≤ m n p m≤n) ⟩
+    suc (n + p)
+  ≤⟨ ≡-is-≤ (suc (n + p)) (suc (p + n)) (cong suc (+-comm n p)) ⟩
+    suc (p + n)
+  ≤⟨⟩
+    suc p + n
+  ≤⟨ ≡-is-≤ (suc p + n) (n + suc p) (+-comm (suc p) n) ⟩
+    n + suc p
+  ∎'
+  
++-mono-≤ : ∀ (m n p q : ℕ) → m ≤ n → p ≤ q → (m + p) ≤ (n + q)
++-mono-≤ m n p q m≤n p≤q =
+  begin'
+    m + p
+  ≤⟨ +-mono-r-≤ m p q p≤q ⟩
+    m + q
+  ≤⟨ +-mono-l-≤ m n q m≤n ⟩
+    n + q
+  ∎'
+```
 
 
 ## Rewriting
@@ -391,7 +485,7 @@ the `rewrite` notation we encountered earlier.
 To enable this notation, we use pragmas to tell Agda which type
 corresponds to equality:
 ```
-{-# BUILTIN EQUALITY _≡_ #-}
+-- moved up {-# BUILTIN EQUALITY _≡_ #-}
 ```
 
 We can then prove the desired property as follows:
