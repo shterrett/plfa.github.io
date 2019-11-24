@@ -35,7 +35,7 @@ open Eq using (_≡_; refl)
 open Eq.≡-Reasoning
 open import Data.Nat using (ℕ)
 open import Function using (_∘_)
-open import plfa.part1.Isomorphism using (_≃_; _≲_; extensionality)
+open import plfa.part1.Isomorphism using (_≃_; _≲_; extensionality; _⇔_; ≃-refl; ≃-sym)
 open plfa.part1.Isomorphism.≃-Reasoning
 ```
 
@@ -238,7 +238,22 @@ Show that `A ⇔ B` as defined [earlier]({{ site.baseurl }}/Isomorphism/#iff)
 is isomorphic to `(A → B) × (B → A)`.
 
 ```
--- Your code goes here
+⇔≃× : ∀ {A B : Set}
+      → (A ⇔ B)
+      → ((A → B) × (B → A))
+      → (A ⇔ B) ≃ ((A → B) × (B → A)) 
+⇔≃× A⇔B AB×BA =
+  record
+    { to = λ{x → ⟨ _⇔_.to x , _⇔_.from x ⟩}
+    ; from = λ{y →
+                 record
+                    { from = proj₂ y
+                    ; to = proj₁ y
+                    }
+               }
+    ; from∘to = λ{x → refl}
+    ; to∘from = λ{⟨ AB , BA ⟩ → refl}
+    }
 ```
 
 
@@ -428,7 +443,22 @@ commutative and associative _up to isomorphism_.
 Show sum is commutative up to isomorphism.
 
 ```
--- Your code goes here
+⊎-comm : ∀ {A B : Set} → (A ⊎ B) ≃ (B ⊎ A)
+⊎-comm =
+  record
+    { to = λ{(inj₁ x) → inj₂ x;
+             (inj₂ x) → inj₁ x
+            }
+    ; from = λ{(inj₁ x) → inj₂ x;
+               (inj₂ x) → inj₁ x
+              }
+    ; to∘from = λ{(inj₁ x) → refl;
+                  (inj₂ x) → refl
+                 }
+    ; from∘to = λ{(inj₁ x) → refl;
+                  (inj₂ x) → refl
+                 }
+    }
 ```
 
 #### Exercise `⊎-assoc` (practice)
@@ -436,7 +466,27 @@ Show sum is commutative up to isomorphism.
 Show sum is associative up to isomorphism.
 
 ```
--- Your code goes here
+⊎-assoc : ∀ {A B C : Set} → ((A ⊎ B) ⊎ C) ≃ (A ⊎ (B ⊎ C))
+⊎-assoc =
+  record
+    { to = λ{(inj₁ (inj₁ x)) → inj₁ x;
+             (inj₁ (inj₂ x)) → inj₂ (inj₁ x);
+             (inj₂ x) → inj₂ (inj₂ x)
+            }
+    ; from = λ{(inj₁ y) → inj₁ (inj₁ y);
+               (inj₂ (inj₁ y)) → inj₁ (inj₂ y);
+               (inj₂ (inj₂ y)) → inj₂ y
+              }
+    ; to∘from = λ{(inj₁ x) → refl;
+                  (inj₂ (inj₁ x)) → refl;
+                  (inj₂ (inj₂ x)) → refl
+                 }
+    ; from∘to = λ{(inj₁ (inj₁ x)) → refl;
+                  (inj₁ (inj₂ x)) → refl;
+                  (inj₂ x) → refl
+                 }
+    }
+               
 ```
 
 ## False is empty
@@ -499,7 +549,22 @@ is the identity of sums _up to isomorphism_.
 Show empty is the left identity of sums up to isomorphism.
 
 ```
--- Your code goes here
+⊥-identity : ∀ {A B : Set} → (A ⊎ B) ≃ (⊥ ⊎ (A ⊎ B))
+⊥-identity =
+  record
+    { to = λ{(inj₁ x) → inj₂ (inj₁ x);
+               (inj₂ x) → inj₂ (inj₂ x)
+              }
+    ;  from = λ{(inj₂ (inj₁ x)) → inj₁ x;
+              (inj₂ (inj₂ x)) → inj₂ x
+             }
+    ; from∘to = λ{(inj₁ x) → refl;
+                  (inj₂ x) → refl
+                 }
+    ; to∘from = λ{(inj₂ (inj₁ x)) → refl;
+                  (inj₂ (inj₂ x)) → refl
+                 }
+    }
 ```
 
 #### Exercise `⊥-identityʳ` (practice)
@@ -507,7 +572,22 @@ Show empty is the left identity of sums up to isomorphism.
 Show empty is the right identity of sums up to isomorphism.
 
 ```
--- Your code goes here
+⊥-identity-r : ∀ {A B : Set} → (A ⊎ B) ≃ ((A ⊎ B) ⊎ ⊥)
+⊥-identity-r =
+  record
+    { to = λ{(inj₁ x) → inj₁ (inj₁ x);
+               (inj₂ x) → inj₁ (inj₂ x)
+              }
+    ;  from = λ{(inj₁ (inj₁ x)) → inj₁ x;
+              (inj₁ (inj₂ x)) → inj₂ x
+             }
+    ; from∘to = λ{(inj₁ x) → refl;
+                  (inj₂ x) → refl
+                 }
+    ; to∘from = λ{(inj₁ (inj₁ x)) → refl;
+                  (inj₁ (inj₂ x)) → refl
+                 }
+    }
 ```
 
 ## Implication is function {#implication}
@@ -731,28 +811,34 @@ one of these laws is "more true" than the other.
 
 Show that the following property holds:
 ```
-postulate
-  ⊎-weak-× : ∀ {A B C : Set} → (A ⊎ B) × C → A ⊎ (B × C)
+⊎-weak-× : ∀ {A B C : Set} → (A ⊎ B) × C → A ⊎ (B × C)
+⊎-weak-× ⟨ (inj₁ x), _ ⟩ = inj₁ x
+⊎-weak-× ⟨ (inj₂ y), z ⟩ = inj₂ ⟨ y , z ⟩
 ```
 This is called a _weak distributive law_. Give the corresponding
 distributive law, and explain how it relates to the weak version.
 
 ```
--- Your code goes here
+⊎-strong-× : ∀ {A B C : Set} → (A ⊎ B) × C → (A × C) ⊎ (B × C)
+⊎-strong-× ⟨ (inj₁ x), z ⟩ = inj₁ ⟨ x , z ⟩
+⊎-strong-× ⟨ (inj₂ y), z ⟩ = inj₂ ⟨ y , z ⟩
 ```
+
+The _strong distributive law_ preserves the `proj₂` portion of the product regardless of which variant of the ⊎ exists.
 
 
 #### Exercise `⊎×-implies-×⊎` (practice)
 
 Show that a disjunct of conjuncts implies a conjunct of disjuncts:
 ```
-postulate
-  ⊎×-implies-×⊎ : ∀ {A B C D : Set} → (A × B) ⊎ (C × D) → (A ⊎ C) × (B ⊎ D)
+⊎×-implies-×⊎ : ∀ {A B C D : Set} → (A × B) ⊎ (C × D) → (A ⊎ C) × (B ⊎ D)
+⊎×-implies-×⊎ (inj₁ ⟨ w , x ⟩) = ⟨ (inj₁ w) , (inj₁ x) ⟩
+⊎×-implies-×⊎ (inj₂ ⟨ y , z ⟩) = ⟨ (inj₂ y) , (inj₂ z) ⟩
 ```
 Does the converse hold? If so, prove; if not, give a counterexample.
 
 ```
--- Your code goes here
+-- no; for (x : C) and (y : B) ⟨ inj₂ x , inj₁ y ⟩ cannot be combined to form ⟨ x, y ⟩ of either A × B or C × D.
 ```
 
 
