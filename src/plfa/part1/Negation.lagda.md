@@ -16,7 +16,7 @@ and classical logic.
 ## Imports
 
 ```
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -193,7 +193,15 @@ Using negation, show that
 is irreflexive, that is, `n < n` holds for no `n`.
 
 ```
--- Your code goes here
+infix 4 _<_
+
+data _<_ : ℕ → ℕ → Set where
+  z<s : ∀ {n : ℕ} → zero < suc n
+  s<s : ∀ {m n : ℕ} → m < n → suc m < suc n
+
+<-irreflexive : ∀ (a : ℕ) → ¬ (a < a)
+<-irreflexive zero = λ()
+<-irreflexive (suc a) = λ{(s<s a<a) → ¬-elim (<-irreflexive a) a<a }
 ```
 
 
@@ -211,7 +219,37 @@ Here "exactly one" means that not only one of the three must hold,
 but that when one holds the negation of the other two must also hold.
 
 ```
--- Your code goes here
+infix 4 _>_
+data _>_ : ℕ → ℕ → Set where
+  s>z : ∀ {n : ℕ} → suc n > zero
+  s>s : ∀ {m n : ℕ} → m > n → suc m > suc n
+
+data Trichotomy : ℕ → ℕ → Set where
+  lt : ∀ {m n : ℕ} →    m < n →  m ≢ n → ¬ (m > n) → Trichotomy m n
+  eq : ∀ {m n : ℕ} → ¬ (m < n) → m ≡ n → ¬ (m > n) → Trichotomy m n
+  gt : ∀ {m n : ℕ} → ¬ (m < n) → m ≢ n →    m > n → Trichotomy m n
+
+dec : ℕ → ℕ
+dec zero = zero
+dec (suc a) = a
+  
+<-trichotomy : ∀ (m n : ℕ) → Trichotomy m n
+<-trichotomy zero zero = eq (λ()) (refl) (λ())
+<-trichotomy zero (suc n) = lt (z<s) (λ()) (λ())
+<-trichotomy (suc m) zero = gt (λ()) (λ()) (s>z)
+<-trichotomy (suc m) (suc n) with <-trichotomy m n
+...                             | lt m<n m≢n ¬m>n =
+                                     lt (s<s m<n)
+                                        (λ{(sm≡sn) → ¬-elim m≢n (cong dec sm≡sn)})
+                                        (λ{(s>s m>n) → ¬-elim ¬m>n m>n})
+...                             | eq ¬m<n m≡n ¬m>n =
+                                     eq (λ{(s<s m<n) → ¬-elim ¬m<n m<n})
+                                        (cong suc m≡n)
+                                        (λ{(s>s m>n) → ¬-elim ¬m>n m>n})
+...                             | gt ¬m<n m≢n m>n =
+                                     gt (λ{(s<s m<n) → ¬-elim ¬m<n m<n})
+                                        (λ{(sm≡sn) → ¬-elim m≢n (cong dec sm≡sn)})
+                                        (s>s m>n)
 ```
 
 #### Exercise `⊎-dual-×` (recommended)
