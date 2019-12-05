@@ -20,8 +20,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_)
-open import plfa.part1.Isomorphism using (_≃_; extensionality)
+open import Data.Product using (_×_; _,_)
+open import plfa.part1.Isomorphism using (_≃_; _⇔_; extensionality)
 ```
 
 
@@ -262,13 +262,52 @@ version of De Morgan's Law.
 This result is an easy consequence of something we've proved previously.
 
 ```
--- Your code goes here
+demorgan : ∀ {a b : Set} → (¬ (a ⊎ b)) ≃ ((¬ a) × (¬ b))
+demorgan =
+  record
+    { to = demorgan-l
+    ; from = demorgan-r
+    ; from∘to = λ{ (¬a⊎b) →  extensionality λ{ (inj₁ a) → refl; (inj₂ b) → refl } }
+    ; to∘from = λ{ (¬a , ¬b) → refl }
+    }
+  where
+    demorgan-l : ∀ {a b : Set} → (¬ (a ⊎ b)) → ((¬ a) × (¬ b))
+    demorgan-l ¬a⊎b = (λ{(a) → ¬a⊎b (inj₁ a)}) , (λ{(b) → ¬a⊎b (inj₂ b)})
+
+    demorgan-r : ∀ {a b : Set} → ((¬ a) × (¬ b)) → (¬ (a ⊎ b))
+    demorgan-r (¬a , ¬b) = λ{(inj₁ a) → ¬a a;
+                            (inj₂ b) → ¬b b}
+
 ```
 
 
 Do we also have the following?
 
     ¬ (A × B) ≃ (¬ A) ⊎ (¬ B)
+    
+```
+-- A B (¬A ⊎ ¬B) ¬(A × B)
+-- ⊤ ⊤     ⊥         ⊥
+-- ⊤ ⊥     ⊤         ⊤
+-- ⊥ ⊤     ⊤         ⊤
+-- ⊥ ⊥     ⊤         ⊤
+
+demorgan' : ∀ {a b : Set} → a → b → (¬ (a × b)) ⇔ ((¬ a) ⊎ (¬ b))
+demorgan' a b =
+  record
+    { to = demorgan'-l a b
+    ; from = demorgan'-r a b
+    }
+  where
+    demorgan'-l : ∀ {a b : Set} → a → b → ¬ (a × b) → (¬ a) ⊎ (¬ b)
+    demorgan'-l _ b ¬a×b = inj₁ λ{(a) → ¬a×b (a , b)}
+    -- arbitrary choice of inj₁ rules out isomorhpism, because if original ¬a⊎¬b was (inj₂ ¬b), then to∘from won't recover that.
+    -- also rules out embedding, because b is discarded, and we won't be able to recover product.
+
+    demorgan'-r : ∀ {a b : Set} → a → b → (¬ a) ⊎ (¬ b) → ¬ (a × b)
+    demorgan'-r _ _ (inj₁ ¬a) = λ{(a , _) → ¬a a}
+    demorgan'-r _ _ (inj₂ ¬b) = λ{(_ , b) → ¬b b}
+```
 
 If so, prove; if not, can you give a relation weaker than
 isomorphism that relates the two sides?
@@ -419,7 +458,12 @@ Consider the following principles:
 Show that each of these implies all the others.
 
 ```
--- Your code goes here
+everything : ∀ {a : Set} → ⊥ → a
+everything = λ()
+
+middle-dne : ∀ {a : Set} → (a ⊎ ¬ a) → (¬ ¬ a → a)
+middle-dne (inj₁ a) = λ{¬¬a → a}
+middle-dne (inj₂ ¬a) = λ{¬¬a → everything (¬¬a ¬a) }
 ```
 
 
@@ -434,7 +478,11 @@ Show that any negated formula is stable, and that the conjunction
 of two stable formulas is stable.
 
 ```
--- Your code goes here
+neg-stable : ∀ {a : Set} → (¬ a) → Stable (¬ a)
+neg-stable ¬a = λ{tna → λ{a → ¬a a}}
+
+conj-stable : ∀ {a b : Set} → (Stable a × Stable b) → Stable (a × b)
+conj-stable (sa , sb) = λ{ ¬¬ab → sa (λ ¬a → ¬¬ab (λ a×b → ¬a (Data.Product.proj₁ a×b))) , sb (λ ¬b → ¬¬ab (λ a×b → ¬b (Data.Product.proj₂ a×b))) }
 ```
 
 ## Standard Prelude
