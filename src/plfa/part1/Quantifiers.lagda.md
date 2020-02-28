@@ -19,9 +19,10 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Relation.Nullary using (¬_)
-open import Data.Product using (_×_; proj₁) renaming (_,_ to ⟨_,_⟩)
-open import Data.Sum using (_⊎_)
+open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import plfa.part1.Isomorphism using (_≃_; extensionality)
+open import Data.Nat using (_≤_; z≤n; s≤s)
 ```
 
 
@@ -92,9 +93,15 @@ dependent product is ambiguous.
 
 Show that universals distribute over conjunction:
 ```
-postulate
-  ∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
-    (∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
+              (∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+∀-distrib-× =
+    record
+        { to    = λ{fx → ⟨ (λ{x → proj₁ (fx x) }) , (λ{x → proj₂ (fx x) }) ⟩ }
+        ; from  = λ{ ⟨ fa , fb ⟩ → (λ{x → ⟨ (fa x) , (fb x) ⟩ }) }
+        ; from∘to = λ{f → refl }
+        ; to∘from = λ{y → refl}
+        }  
 ```
 Compare this with the result (`→-distrib-×`) in
 Chapter [Connectives]({{ site.baseurl }}/Connectives/).
@@ -103,9 +110,11 @@ Chapter [Connectives]({{ site.baseurl }}/Connectives/).
 
 Show that a disjunction of universals implies a universal of disjunctions:
 ```
-postulate
-  ⊎∀-implies-∀⊎ : ∀ {A : Set} {B C : A → Set} →
-    (∀ (x : A) → B x) ⊎ (∀ (x : A) → C x)  →  ∀ (x : A) → B x ⊎ C x
+⊎∀-implies-∀⊎ : ∀ {A : Set} {B C : A → Set}
+                → (∀ (x : A) → B x) ⊎ (∀ (x : A) → C x)
+                →  ∀ (x : A) → B x ⊎ C x
+⊎∀-implies-∀⊎ (inj₁ f) x = inj₁ (f x)
+⊎∀-implies-∀⊎ (inj₂ f) x = inj₂ (f x)
 ```
 Does the converse hold? If so, prove; if not, explain why.
 
@@ -246,9 +255,23 @@ establish the isomorphism is identical to what we wrote when discussing
 
 Show that existentials distribute over disjunction:
 ```
-postulate
-  ∃-distrib-⊎ : ∀ {A : Set} {B C : A → Set} →
-    ∃[ x ] (B x ⊎ C x) ≃ (∃[ x ] B x) ⊎ (∃[ x ] C x)
+∃-distrib-⊎ : ∀ {A : Set} {B C : A → Set} →
+              ∃[ x ] (B x ⊎ C x) ≃ (∃[ x ] B x) ⊎ (∃[ x ] C x)
+∃-distrib-⊎ =
+  record
+    { to = λ{ ⟨ x , inj₁ bx ⟩ → inj₁ ⟨ x , bx ⟩
+            ; ⟨ x , inj₂ cx ⟩ → inj₂ ⟨ x , cx ⟩
+            }
+    ; from = λ{ (inj₁ ⟨ x , bx ⟩) → ⟨ x , inj₁ bx ⟩
+              ; (inj₂ ⟨ x , cx ⟩) → ⟨ x , inj₂ cx ⟩
+              }
+    ; from∘to = λ{ ⟨ a , inj₁ ba ⟩ → refl
+                 ; ⟨ a , inj₂ ca ⟩ → refl
+                 }
+    ; to∘from = λ{ (inj₁ ⟨ a , ba ⟩) → refl
+                 ; (inj₂ ⟨ a , ca ⟩) → refl
+                 }
+    }
 ```
 
 #### Exercise `∃×-implies-×∃` (practice)
@@ -384,9 +407,11 @@ Show that `y ≤ z` holds if and only if there exists a `x` such that
 `x + y ≡ z`.
 
 ```
--- Your code goes here
+∃-+-≤ : ∀ { a b : ℕ } → a ≤ b → ∃[ c ] (a + c ≡ b)
+∃-+-≤ {zero} {b} z≤n = ⟨ b , refl ⟩
+∃-+-≤ (s≤s a≤b) with ∃-+-≤ a≤b
+...                     | ⟨ c , pl ⟩ = ⟨ c , Eq.cong suc pl ⟩
 ```
-
 
 ## Existentials, Universals, and Negation
 
@@ -427,13 +452,15 @@ requires extensionality.
 
 Show that existential of a negation implies negation of a universal:
 ```
-postulate
-  ∃¬-implies-¬∀ : ∀ {A : Set} {B : A → Set}
-    → ∃[ x ] (¬ B x)
-      --------------
-    → ¬ (∀ x → B x)
+∃¬-implies-¬∀ : ∀ {A : Set} {B : A → Set}
+                → ∃[ x ] (¬ B x)
+                --------------
+                → ¬ (∀ x → B x)
+∃¬-implies-¬∀ ⟨ a , ¬b ⟩ = λ{ x → ¬b (x a) }
 ```
 Does the converse hold? If so, prove; if not, explain why.
+
+Maybe, but we don't have the law of the excluded middle so we can't say for sure. Also, the proof requires us to produce the particular `x : A` that would give `¬ B x`, and we don't have a great way of getting our hands on that.
 
 
 #### Exercise `Bin-isomorphism` (stretch) {#Bin-isomorphism}
