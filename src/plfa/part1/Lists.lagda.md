@@ -28,7 +28,9 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Data.Product using (_×_; ∃; ∃-syntax) renaming (_,_ to ⟨_,_⟩)
 open import Function using (_∘_)
 open import Level using (Level)
-open import plfa.part1.Isomorphism using (_≃_; _⇔_)
+open import plfa.part1.Isomorphism using (_≃_; _⇔_; ∀-extensionality)
+open import plfa.part1.Induction using (*-distrib-+; *-comm; +-comm; ∸-+-assoc)
+open import plfa.part1.Connectives using (_⊎_; inj₁; inj₂)
 ```
 
 
@@ -352,14 +354,60 @@ list, and the sum of the numbers up to `n - 1` is `n * (n - 1) / 2`.
 Show that the reverse of one list appended to another is the
 reverse of the second appended to the reverse of the first:
 
-    reverse (xs ++ ys) ≡ reverse ys ++ reverse xs
+```
+reverse-++-distrib : ∀ { A : Set } (xs ys : List A )
+                     →  reverse (xs ++ ys) ≡ reverse ys ++ reverse xs
+reverse-++-distrib [] ys =
+  begin
+    reverse ([] ++ ys)
+  ≡⟨⟩
+    reverse ys
+  ≡⟨ sym (++-identityʳ (reverse ys)) ⟩
+    (reverse ys) ++ []
+  ≡⟨⟩
+    (reverse ys) ++ (reverse [])
+  ∎
+reverse-++-distrib (x ∷ xs) ys =
+  begin
+    reverse ((x ∷ xs) ++ ys)
+  ≡⟨⟩
+    reverse (x ∷ (xs ++ ys))
+  ≡⟨⟩
+    reverse (xs ++ ys) ++ [ x ]
+  ≡⟨ cong (_++ ([ x ])) (reverse-++-distrib xs ys) ⟩
+    (reverse ys ++ reverse xs) ++ [ x ]
+  ≡⟨ ++-assoc (reverse ys) (reverse xs) [ x ] ⟩
+    reverse ys ++ (reverse xs ++ [ x ])
+  ≡⟨⟩
+    reverse ys ++ reverse (x ∷ xs)
+  ∎
+```
 
 #### Exercise `reverse-involutive` (recommended)
 
 A function is an _involution_ if when applied twice it acts
 as the identity function.  Show that reverse is an involution:
 
-    reverse (reverse xs) ≡ xs
+```
+reverse-invol : ∀ { A : Set } (xs : List A)
+                → reverse (reverse xs) ≡ xs
+reverse-invol [] = refl
+reverse-invol (x ∷ xs) =
+  begin
+    reverse (reverse (x ∷ xs))
+  ≡⟨⟩
+    reverse (reverse xs ++ [ x ])
+  ≡⟨ reverse-++-distrib (reverse xs) [ x ] ⟩
+    reverse [ x ] ++ (reverse (reverse xs))
+  ≡⟨ cong (reverse [ x ] ++_) (reverse-invol xs) ⟩
+    reverse [ x ] ++ xs
+  ≡⟨⟩
+    [ x ] ++ xs
+  ≡⟨⟩
+    x ∷ xs
+  ∎
+    
+```
 
 
 ## Faster reverse
@@ -528,7 +576,34 @@ Prove that the map of a composition is equal to the composition of two maps:
 The last step of the proof requires extensionality.
 
 ```
--- Your code goes here
+map-compose-apply : ∀ { A B C : Set } (f : A → B) (g : B → C) (xs : List A)
+           → map (g ∘ f) xs ≡ (map g ∘ map f) xs
+map-compose-apply f g [] =
+  begin
+    map (g ∘ f) []
+  ≡⟨⟩
+    []
+  ≡⟨⟩
+    map g (map f [])
+  ≡⟨⟩
+    (map g ∘ map f) []
+  ∎
+map-compose-apply f g (x ∷ xs) =
+  begin
+    map (g ∘ f) (x ∷ xs)
+  ≡⟨⟩
+    ((g ∘ f) x) ∷ map (g ∘ f) xs
+  ≡⟨ cong (((g ∘ f) x) ∷_) (map-compose-apply f g xs) ⟩
+    ((g ∘ f) x) ∷ ((map g ∘ map f) xs)
+  ≡⟨⟩
+    (g (f x)) ∷ ((map g ∘ map f) xs)
+  ≡⟨⟩
+    (map g ∘ map f) (x ∷ xs)
+  ∎ 
+
+map-compose : ∀ { A B C : Set } (f : A → B) (g : B → C)
+              → map (g ∘ f) ≡ map g ∘ map f
+map-compose f g = ∀-extensionality λ{ xs → map-compose-apply f g xs }
 ```
 
 #### Exercise `map-++-distribute` (practice)
@@ -552,10 +627,12 @@ data Tree (A B : Set) : Set where
 ```
 Define a suitable map operator over trees:
 
-    map-Tree : ∀ {A B C D : Set} → (A → C) → (B → D) → Tree A B → Tree C D
-
 ```
--- Your code goes here
+map-Tree : ∀ {A B C D : Set} → (A → C) → (B → D) → Tree A B → Tree C D
+map-Tree f g (leaf a) = leaf (f a)
+map-Tree f g (node t b t₁) = node (map-Tree f g t)
+                                  (g b)
+                                  (map-Tree f g t₁)
 ```
 
 ## Fold {#Fold}
@@ -637,7 +714,8 @@ For example:
     product [ 1 , 2 , 3 , 4 ] ≡ 24
 
 ```
--- Your code goes here
+product : List ℕ → ℕ
+product = foldr _*_ 1
 ```
 
 #### Exercise `foldr-++` (recommended)
@@ -647,7 +725,28 @@ Show that fold and append are related as follows:
     foldr _⊗_ e (xs ++ ys) ≡ foldr _⊗_ (foldr _⊗_ e ys) xs
 
 ```
--- Your code goes here
+foldr-++ : ∀ {A : Set} (_⊗_ : A → A → A) (e : A) (xs ys : List A) → 
+    foldr _⊗_ e (xs ++ ys) ≡ foldr _⊗_ (foldr _⊗_ e ys) xs
+foldr-++ f e [] ys =
+  begin
+    foldr f e ([] ++ ys)
+  ≡⟨⟩
+    foldr f e ys
+  ≡⟨⟩
+    foldr f e ys
+  ≡⟨⟩
+    (foldr f (foldr f e ys) [])
+  ∎
+foldr-++ f e (x ∷ xs) ys =
+  begin
+    foldr f e ((x ∷ xs) ++ ys)
+  ≡⟨⟩
+    f x (foldr f e (xs ++ ys))
+  ≡⟨ cong (f x) (foldr-++ f e xs ys) ⟩
+    f x (foldr f (foldr f e ys) xs)
+  ≡⟨⟩
+    foldr f (foldr f e ys) (x ∷ xs)
+  ∎
 ```
 
 #### Exercise `foldr-∷` (practice)
@@ -681,11 +780,12 @@ The proof requires extensionality.
 
 Define a suitable fold function for the type of trees given earlier:
 
-    fold-Tree : ∀ {A B C : Set} → (A → C) → (C → B → C → C) → Tree A B → C
-
-
 ```
--- Your code goes here
+fold-Tree : ∀ {A B C : Set} → (A → C) → (C → B → C → C) → Tree A B → C
+fold-Tree f g (leaf a) = f a
+fold-Tree f g (node t x t₁) = g (fold-Tree f g t)
+                                x
+                                (fold-Tree f g t₁)
 ```
 
 #### Exercise `map-is-fold-Tree` (practice)
@@ -712,8 +812,39 @@ _ = refl
 Prove that the sum of the numbers `(n - 1) + ⋯ + 0` is
 equal to `n * (n ∸ 1) / 2`:
 
-    sum (downFrom n) * 2 ≡ n * (n ∸ 1)
-
+```
+closedSum : (n : ℕ) → sum (downFrom n) * 2 ≡ n * (n ∸ 1)
+closedSum zero = refl
+closedSum (suc zero) = refl
+closedSum (suc (suc n)) =
+  begin
+    sum (downFrom (suc (suc n))) * 2
+  ≡⟨⟩
+    sum (suc n ∷ downFrom (suc n)) * 2
+  ≡⟨⟩
+    (suc n + sum (downFrom (suc n))) * 2
+  ≡⟨ *-distrib-+ (suc n) (sum (downFrom (suc n))) 2 ⟩
+    (suc n * 2) + (sum (downFrom (suc n)) * 2)
+  ≡⟨ cong ((suc n * 2) +_) (closedSum (suc n)) ⟩
+    (suc n * 2) + ((suc n) * ((suc n) ∸ 1))
+  ≡⟨ cong (((suc n) * 2) +_) (*-comm (suc n) ((suc n) ∸ 1)) ⟩
+    ((suc n) * 2) + (((suc n) ∸ 1) * (suc n))
+  ≡⟨ cong (_+ (((suc n) ∸ 1) * (suc n))) (*-comm (suc n) 2) ⟩
+    (2 * (suc n)) + (((suc n) ∸ 1) * (suc n))
+  ≡⟨ sym (*-distrib-+ 2 ((suc n) ∸ 1) (suc n)) ⟩
+    (2 + ((suc n) ∸ 1)) * (suc n)
+  ≡⟨ cong (_* (suc n)) (+-comm 2 ((suc n) ∸ 1)) ⟩
+    (((suc n) ∸ 1) + 2) * (suc n)
+  ≡⟨⟩
+    (((suc n) ∸ 1) + 2) * (suc (suc n) ∸ 1)
+  ≡⟨ cong (_* (suc (suc n) ∸ 1)) (+-comm ((suc n) ∸ 1) 2) ⟩
+    (2 + ((suc n) ∸ 1)) * (suc (suc n) ∸ 1)
+  ≡⟨⟩
+    (suc (suc ((suc n) ∸ 1))) * (suc (suc n) ∸ 1)
+  ≡⟨⟩
+    (suc (suc n)) * (suc (suc n) ∸ 1)
+  ∎
+```
 
 ## Monoids
 
@@ -790,11 +921,9 @@ foldr-monoid _⊗_ e ⊗-monoid (x ∷ xs) y =
 ```
 
 In a previous exercise we showed the following.
-```
-postulate
-  foldr-++ : ∀ {A : Set} (_⊗_ : A → A → A) (e : A) (xs ys : List A) → 
-    foldr _⊗_ e (xs ++ ys) ≡ foldr _⊗_ (foldr _⊗_ e ys) xs
-```
+
+    foldr-++ : ∀ {A : Set} (_⊗_ : A → A → A) (e : A) (xs ys : List A) → 
+        foldr _⊗_ e (xs ++ ys) ≡ foldr _⊗_ (foldr _⊗_ e ys) xs
 
 As a consequence, using a previous exercise, we have the following:
 ```
@@ -819,7 +948,9 @@ operations associate to the left rather than the right.  For example:
     foldl _⊗_ e [ x , y , z ]  =  ((e ⊗ x) ⊗ y) ⊗ z
 
 ```
--- Your code goes here
+foldl : ∀ { A B : Set } → (B → A → B) → B → List A → B
+foldl _⊗_ e [] = e
+foldl _⊗_ e (x ∷ xs) = foldl _⊗_ (e ⊗ x) xs
 ```
 
 
@@ -829,7 +960,52 @@ Show that if `_⊗_` and `e` form a monoid, then `foldr _⊗_ e` and
 `foldl _⊗_ e` always compute the same result.
 
 ```
--- Your code goes here
+foldl-monoid : ∀ {A : Set} (_⊗_ : A → A → A) (e : A) → IsMonoid _⊗_ e
+             → ∀ (xs : List A) (y : A) → foldl _⊗_ y xs ≡ y ⊗ foldl _⊗_ e xs
+foldl-monoid _⊗_ e ⊗-monoid [] y = 
+  begin
+    foldl _⊗_ y []
+  ≡⟨⟩
+    y
+  ≡⟨ sym (identityʳ ⊗-monoid y) ⟩
+  (y ⊗ e)
+  ≡⟨⟩
+    y ⊗ (foldl _⊗_ e [])
+  ∎
+foldl-monoid _⊗_ e ⊗-monoid (x ∷ xs) y =
+  begin
+    foldl _⊗_ y (x ∷ xs)
+  ≡⟨⟩
+    foldl _⊗_ (y ⊗ x) xs
+  ≡⟨ foldl-monoid _⊗_ e ⊗-monoid xs (y ⊗ x) ⟩
+    (y ⊗ x) ⊗ (foldl _⊗_ e xs)
+  ≡⟨ assoc ⊗-monoid y x (foldl _⊗_ e xs) ⟩
+    y ⊗ (x ⊗ (foldl _⊗_ e xs))
+  ≡⟨ cong (y ⊗_) (cong (_⊗ (foldl _⊗_ e xs)) (sym (identityˡ ⊗-monoid x)))⟩
+    y ⊗ ((e ⊗ x) ⊗ (foldl _⊗_ e xs))
+  ≡⟨ cong (y ⊗_) (sym (foldl-monoid _⊗_ e ⊗-monoid xs (e ⊗ x))) ⟩
+    y ⊗ (foldl _⊗_ (e ⊗ x) xs)
+  ≡⟨⟩
+    y ⊗ (foldl _⊗_ e (x ∷ xs))
+  ∎
+    
+foldr-monoid-foldl : ∀ {A : Set} (_⊗_ : A → A → A) (e : A) → IsMonoid _⊗_ e 
+                     → ∀ (xs : List A) → foldr _⊗_ e xs ≡ foldl _⊗_ e xs
+foldr-monoid-foldl _⊗_ e ⊗-monoid [] = refl
+foldr-monoid-foldl _⊗_ e ⊗-monoid (x ∷ xs) =
+  begin
+    foldr _⊗_ e (x ∷ xs)
+  ≡⟨⟩
+    x ⊗ foldr _⊗_ e xs
+  ≡⟨ cong (x ⊗_) (foldr-monoid-foldl _⊗_ e ⊗-monoid xs) ⟩
+    x ⊗ (foldl _⊗_ e xs)
+  ≡⟨ cong (_⊗ (foldl _⊗_ e xs)) (sym (identityˡ ⊗-monoid x)) ⟩
+    (e ⊗ x) ⊗ (foldl _⊗_ e xs)
+  ≡⟨ sym (foldl-monoid _⊗_ e ⊗-monoid xs (e ⊗ x)) ⟩
+    foldl _⊗_ (e ⊗ x) xs
+  ≡⟨⟩
+    foldl _⊗_ e (x ∷ xs)
+  ∎
 ```
 
 
